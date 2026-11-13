@@ -1,136 +1,144 @@
-# WiFinder — novidades
+# WiFinder — changelog
 
-## 1.7.0 — 11/11/2026
+## 1.7.0 — 2026-11-11
 
-Feito a partir do primeiro voo com muitas redes (voo 20: 113 redes).
+Driven by the first flight with many networks (flight 20: 113 networks).
 
-### Tela inicial (novo)
-- `python3 -m wifinder` abre a tela inicial no navegador (só no próprio
-  computador, em http://127.0.0.1:8737/).
-- Mostra sozinha quando o ESP32 é ligado na USB; um clique baixa os voos da
-  placa, com barra de progresso. Apagar da placa depois é opcional.
-- Biblioteca de voos na pasta `voos/`: um arquivo `.log` por voo, com data e
-  hora do GPS no nome. Baixar de novo não duplica; um voo que cresceu é
-  atualizado; logs vazios são ignorados.
-- Cada voo tem cartão com desenho do percurso, aparelhos, redes, duração e
-  distância, e botões para o mapa e o relatório PDF. Dá para renomear,
-  excluir e importar arquivos `.log` do computador.
-- Vários voos juntos: marque os cartões e abra um mapa ou relatório só, com
-  as amostras de todos somadas na estimativa.
+### Start screen (new)
+- `python3 -m wifinder` opens the start screen in the browser (local computer
+  only, at http://127.0.0.1:8737/).
+- Detects on its own when the ESP32 is plugged into USB; one click downloads
+  the flights from the board, with a progress bar. Erasing them from the board
+  afterwards is optional.
+- Flight library in the `voos/` folder: one `.log` file per flight, with the
+  GPS date and time in the name. Downloading again does not duplicate; a
+  flight that grew is updated; empty logs are ignored.
+- Each flight has a card with a drawing of the track, devices, networks,
+  duration and distance, plus buttons for the map and the PDF report. Flights
+  can be renamed, deleted, and `.log` files can be imported from the computer.
+- Several flights together: select the cards and open a single map or report,
+  with the samples of all of them combined in the estimate.
 
-### Executável para Linux (novo)
-- `./empacotar.sh` gera o arquivo único `WiFinder`; com `--atalho`, cria a
-  entrada no menu de aplicativos.
-- Abrir o programa com ele já aberto só mostra a tela existente; botão
-  "Encerrar o WiFinder" no rodapé.
+### Linux executable (new)
+- `./empacotar.sh` builds the single `WiFinder` file; with `--atalho` it also
+  creates an entry in the applications menu.
+- Launching the program while it is already open just shows the existing
+  window; "Encerrar o WiFinder" (quit) button in the footer.
 
-### Estimativa
-- Posição pelo centroide dos pontos de sinal mais forte, em vez do ajuste de
-  perda de percurso. Nas simulações o erro mediano caiu de ~40 m para ~20 m
-  na cidade e de ~27 m para ~16 m na selva; o pior caso, de ~380 m para ~100 m.
-- Ficar parado não puxa mais a estimativa: as amostras são agrupadas em
-  células de 8 m antes da conta.
-- Redes do mesmo aparelho (principal, visitantes, operadora) viram um item só.
-  No voo 20, 113 redes são 73 aparelhos.
-- Raio provável (± m) no lugar do raio de incerteza de centenas de metros;
-  nas simulações a posição verdadeira fica dentro dele em 94 % dos casos.
-- Confiança boa / média / fraca, conforme o sinal e em quantos pontos do
-  percurso o aparelho foi ouvido.
-- Fixes ruins do começo (GPS ainda se acertando) não entram na conta nem no
-  desenho do percurso.
+### Estimation
+- Position from the centroid of the strongest-signal points, instead of the
+  path-loss fit. In simulations the median error dropped from ~40 m to ~20 m
+  in the city scenario and from ~27 m to ~16 m in the forest scenario; the
+  worst case from ~380 m to ~100 m.
+- Hovering no longer pulls the estimate: samples are grouped into 8 m cells
+  before the calculation.
+- Networks from the same device (main, guest, ISP) become a single item. In
+  flight 20, 113 networks are 73 devices.
+- Likely radius (± m) instead of an uncertainty radius of hundreds of metres;
+  in simulations the true position falls inside it 94 % of the time.
+- Confidence good / medium / weak, based on signal and on how many track
+  points heard the device.
+- Bad fixes at the start (GPS still settling) are left out of the estimate
+  and of the drawn track.
 
-### Mapa interativo
-- Zoom bem maior (até o nível 22; imagem de satélite nativa até o 19 onde
-  existe, detectado sozinho).
-- Vista 3D: botão 2D/3D, inclinar e girar com o botão direito do mouse,
-  coluna por aparelho com altura conforme o sinal, prédios onde o
-  OpenStreetMap tem, e a altura do voo como uma cortina sob o percurso.
-- Cor = sinal, tamanho = confiança. Os nomes não se encavalam mais: aparecem
-  os mais fortes e os outros surgem ao aproximar.
-- Cabeçalho com aparelhos, redes, duração e percurso; lista com canal e
-  confiança; popup com todas as redes do aparelho.
-- CSV e KML com canal, redes do aparelho e confiança.
+### Interactive map
+- Much deeper zoom (up to level 22; native satellite imagery up to 19 where
+  available, detected automatically).
+- 3D view: 2D/3D button, tilt and rotate with the right mouse button, one
+  column per device with height by signal, buildings where OpenStreetMap has
+  them, and the flight altitude as a curtain under the track.
+- Colour = signal, size = confidence. Labels no longer overlap: the strongest
+  are shown and the others appear when zooming in.
+- Header with devices, networks, duration and track length; list with channel
+  and confidence; popup with all of the device's networks.
+- CSV and KML with channel, the device's networks and confidence.
 
-### Relatório PDF
-- Página 1 com indicadores do voo e mapa de satélite mais nítido, enquadrado
-  no percurso, sem os círculos gigantes e com nomes sem sobreposição.
-- Página nova "Panorama": aparelhos por canal, por sinal, os dez mais fortes
-  e um quadro explicando como ler o relatório.
-- Tabela redesenhada (linhas alternadas, cor do sinal, canal, número de redes).
+### PDF report
+- Page 1 with flight indicators and a sharper satellite map, framed on the
+  track, without the giant circles and with non-overlapping labels.
+- New "Panorama" page: devices per channel, per signal, the ten strongest and
+  a box explaining how to read the report.
+- Redesigned table (alternating rows, signal colour, channel, number of
+  networks).
 
-### Mudou
-- `<db>-roteadores.csv` tem colunas novas: ssid, bssid, redes, canal, lat,
-  lon, raio_m, confianca, amostras, pontos, rssi_max.
-- `--ground-alt` e `--min-samples` continuam aceitos, mas não têm mais efeito.
-- O mapa passou do Leaflet para o MapLibre GL.
+### Changed
+- `<db>-roteadores.csv` has new columns: ssid, bssid, redes (networks), canal
+  (channel), lat, lon, raio_m (radius), confianca (confidence), amostras
+  (samples), pontos (points), rssi_max.
+- `--ground-alt` and `--min-samples` are still accepted but no longer have an
+  effect.
+- The map moved from Leaflet to MapLibre GL.
 
-### Conhecido
-- O erro mediano na simulação de cidade é ~20 m; a meta antiga de 15 m do
-  teste `test_simulated_flight` não foi atingida e o limite do teste passou
-  para 25 m.
-- Num percurso em linha reta não dá para saber de que lado o aparelho está.
+### Known issues
+- The median error in the city simulation is ~20 m; the old 15 m target of
+  `test_simulated_flight` was not reached and the test limit is now 25 m.
+- On a straight-line track it is not possible to tell which side a device is
+  on.
 
-## 1.6.0 — 11/11/2026
+## 1.6.0 — 2026-11-11
 
-Base anterior: 1.5.1 (coleta na Raspberry Pi com `iw scan`, simulador,
-estimativa e mapa simples).
+Previous base: 1.5.1 (collection on a Raspberry Pi with `iw scan`, simulator,
+estimation and a simple map).
 
-### Coleta embarcada no ESP32 (novo)
-- Firmware Arduino em `firmware/wifinder` para ESP32 WROOM-32 com tela OLED:
-  lê o GPS NEO-6M (UART2, GPIO16/17), varre WiFi canal a canal (120 ms por
-  canal, uma volta a cada ~2 s) e grava tudo na flash (LittleFS, ~1,9 MB).
-- Detecção automática da tela OLED (pinos 21/22, 5/4, Heltec 4/15 e 4/5).
-  Se a tela for Heltec, os pinos do GPS trocam sozinhos para 17/13.
-- Tela de coleta: missão atual, estado do GPS com diagnóstico (sem dados,
-  lixo na serial, sem fix, fix com satélites e HDOP), hora UTC, altitude,
-  redes ouvidas, amostras gravadas e flash livre.
-- Comandos pela USB: `help`, `ls`, `dump`, `rm`, `rmall`, `done`, `pause`,
+### On-board collection on the ESP32 (new)
+- Arduino firmware in `firmware/wifinder` for an ESP32 WROOM-32 with an OLED
+  screen: reads the NEO-6M GPS (UART2, GPIO16/17), scans WiFi channel by
+  channel (120 ms per channel, one sweep every ~2 s) and writes everything to
+  flash (LittleFS, ~1.9 MB).
+- Automatic OLED detection (pins 21/22, 5/4, Heltec 4/15 and 4/5). With a
+  Heltec screen, the GPS pins switch to 17/13 automatically.
+- Collection screen: current mission, GPS state with diagnostics (no data,
+  garbage on serial, no fix, fix with satellites and HDOP), UTC time,
+  altitude, networks heard, samples recorded and free flash.
+- USB commands: `help`, `ls`, `dump`, `rm`, `rmall`, `done`, `pause`,
   `resume`, `info`.
-- Botão EN: reinicia e abre uma missão nova (tela "Nova missão: vNNN").
-  Botão BOOT segurado 3 s: apaga todos os logs, com contagem na tela.
-- Animações: "PC conectado" com spinner, barra de progresso durante a
-  transferência e check "Pronto!" no fim.
-- Pull-up no RX do GPS (sem ruído com o módulo desligado); `dump` limitado
-  ao tamanho anunciado (o arquivo atual cresce durante a transferência).
-- `firmware/flash.sh` compila e grava com um comando (partição no_ota:
-  2 MB de app + 2 MB de logs).
+- EN button: restarts and opens a new mission ("Nova missão: vNNN" screen).
+  BOOT button held for 3 s: erases all logs, with a countdown on screen.
+- Animations: "PC conectado" with a spinner, progress bar during the transfer
+  and a "Pronto!" check mark at the end.
+- Pull-up on the GPS RX (no noise with the module off); `dump` limited to the
+  announced size (the current file grows during the transfer).
+- `firmware/flash.sh` compiles and flashes in one command (no_ota partition:
+  2 MB app + 2 MB logs).
 
-### Linha de comando
-- `pull`: baixa os logs pela USB, guarda em `<db>-logs/` e importa no banco,
-  sem importar duas vezes o mesmo arquivo (tabela `imports`). `--rm` apaga da
-  placa depois de baixar.
-- `import`: importa logs já baixados. A posição de cada rede é interpolada
-  entre os fixes vizinhos pelo relógio da placa (até 2 s de distância).
-- `report`: relatório em PDF com resumo do voo (início, duração, distância,
-  altitude, fixes, amostras, redes), mapa de satélite montado a partir dos
-  tiles do Esri (com cache em `~/.cache/wifinder-tiles`) e tabela das redes.
-  `--sem-fundo` para uso sem internet.
-- `simulate`: `--ambiente selva` (drone acima da copa, perda por vegetação
-  pelo modelo de Weissberger, roteadores em clareira ou sob a mata,
-  sombreamento forte), `--esp32-log` (grava o voo no formato do firmware),
-  `--alt` e `--lane`.
+### Command line
+- `pull`: downloads the logs over USB, keeps them in `<db>-logs/` and imports
+  them into the database without importing the same file twice (`imports`
+  table). `--rm` erases them from the board after downloading.
+- `import`: imports logs already downloaded. The position of each network is
+  interpolated between the neighbouring fixes using the board clock (up to
+  2 s apart).
+- `report`: PDF report with a flight summary (start, duration, distance,
+  altitude, fixes, samples, networks), a satellite map built from Esri tiles
+  (cached in `~/.cache/wifinder-tiles`) and the network table. `--sem-fundo`
+  for offline use.
+- `simulate`: `--ambiente selva` (forest scenario: drone above the canopy,
+  vegetation loss using the Weissberger model, routers in clearings or under
+  the trees, strong shadowing), `--esp32-log` (writes the flight in the
+  firmware format), `--alt` and `--lane`.
 
-### Mapa interativo
-- Painel com busca por SSID/BSSID, filtros por status, mínimo de amostras,
-  RSSI máximo e incerteza máxima; camadas de trajetória, círculos e nomes.
-- Lista das redes; clicar voa até a rede e mostra os pontos onde ela foi
-  ouvida, coloridos do sinal fraco ao forte.
-- Coordenadas em decimal, graus/minutos/segundos ou MGRS: na barra inferior
-  conforme o cursor, ao clicar no mapa e no popup de cada rede, com botão de
-  copiar e link para o Google Maps.
-- Exportação das redes visíveis em CSV (com MGRS) e KML (Google Earth).
-- Nome da rede sempre visível ao lado de cada ponto.
-- Fundo de satélite (Esri) e ruas (CARTO); o OpenStreetMap foi removido
-  porque bloqueia páginas abertas do disco. Zoom nativo limitado a 17.
+### Interactive map
+- Panel with search by SSID/BSSID, filters by status, minimum samples,
+  maximum RSSI and maximum uncertainty; layers for track, circles and labels.
+- Network list; clicking flies to the network and shows the points where it
+  was heard, coloured from weak to strong signal.
+- Coordinates in decimal, degrees/minutes/seconds or MGRS: in the bottom bar
+  following the cursor, on map click and in each network's popup, with a copy
+  button and a Google Maps link.
+- Export of visible networks to CSV (with MGRS) and KML (Google Earth).
+- Network name always visible next to each point.
+- Satellite (Esri) and street (CARTO) base maps; OpenStreetMap was removed
+  because it blocks pages opened from disk. Native zoom limited to 17.
 
-### Outros
-- README com fiação, gravação e fluxo completo.
-- Testes novos: importação de log, download com serial simulada, fluxo
-  completo ESP32, relatório. 7 passam.
+### Other
+- README with wiring, flashing and the full workflow.
+- New tests: log import, download with a mocked serial port, full ESP32 flow,
+  report. 7 pass.
 
-### Conhecido
-- O estimador por ajuste de perda de percurso erra ~50 m na simulação de
-  cidade e ~70 m na de selva; o centroide ponderado pelo sinal acerta melhor
-  na selva (~17 m). `test_simulated_flight` continua falhando por isso.
-  Próximo passo sugerido: centroide ou híbrido no `estimate`.
-- A parte de GPS do firmware ainda não foi testada com o módulo ligado.
+### Known issues
+- The path-loss fit estimator is off by ~50 m in the city simulation and
+  ~70 m in the forest one; the signal-weighted centroid does better in the
+  forest (~17 m). `test_simulated_flight` still fails because of this.
+  Suggested next step: centroid or hybrid in `estimate`.
+- The GPS part of the firmware has not yet been tested with the module
+  connected.

@@ -1,40 +1,44 @@
 # WiFinder
 
-Localiza roteadores WiFi a partir de RSSI + GPS coletados em voo. A coleta
-roda num ESP32 com telinha OLED e GPS NEO-6M; a estimativa e o mapa são
-gerados no computador.
+Locates WiFi routers from RSSI + GPS data collected in flight. Collection runs
+on an ESP32 with a small OLED screen and a NEO-6M GPS; position estimation and
+the map are produced on the computer.
 
 ```
-ESP32 em voo ──(flash)──> logs v###.log ──(USB)──> voo.db ──> CSV + mapa HTML
+ESP32 in flight ──(flash)──> v###.log logs ──(USB)──> flight.db ──> CSV + HTML map
 ```
 
-## Estrutura
+> The program's interface (screens, command-line flags, report text, CSV
+> columns) is in Portuguese. This documentation quotes those strings as they
+> appear, with a translation where useful.
 
-| Pasta / arquivo | O que é |
+## Layout
+
+| Folder / file | What it is |
 |---|---|
-| `firmware/wifinder/` | Firmware Arduino do ESP32 (coleta WiFi + GPS, tela OLED, logs na flash) |
-| `wifinder/` | Programa em Python: tela inicial, importação, estimativa, mapa, relatório, simulador |
-| `suporte/` | Suporte impresso em 3D para levar a coleta em cima de um DJI Mavic 4 Pro (ver `suporte/LEIA-ME.md`) |
-| `tests/` | Testes (`python3 -m pytest tests`) |
-| `empacotar.sh` | Gera o executável único para Linux |
-| `CHANGELOG.md` | Novidades de cada versão |
+| `firmware/wifinder/` | Arduino firmware for the ESP32 (WiFi + GPS collection, OLED screen, logs on flash) |
+| `wifinder/` | Python program: start screen, import, estimation, map, report, simulator |
+| `suporte/` | 3D-printed enclosure that carries the collector on top of a DJI Mavic 4 Pro (see `suporte/README.md`) |
+| `tests/` | Tests (`python3 -m pytest tests`) |
+| `empacotar.sh` | Builds the single-file Linux executable |
+| `CHANGELOG.md` | What changed in each version |
 
 ## Hardware
 
-- ESP32 WROOM-32 com OLED 0,96" (SSD1306, I2C). O firmware acha a tela
-  sozinho nos pinos mais comuns (21/22, 5/4, Heltec 4/15).
-- GPS GY-NEO6M V2, ligado na UART2 do ESP32:
+- ESP32 WROOM-32 with a 0.96" OLED (SSD1306, I2C). The firmware finds the
+  screen by itself on the most common pins (21/22, 5/4, Heltec 4/15).
+- GY-NEO6M V2 GPS, wired to the ESP32's UART2:
 
 | GPS NEO-6M | ESP32           |
 |------------|-----------------|
-| VCC        | VIN (5 V) ou 3V3 |
+| VCC        | VIN (5 V) or 3V3 |
 | GND        | GND             |
 | TX         | GPIO16 (RX2)    |
-| RX         | GPIO17 (TX2), opcional |
+| RX         | GPIO17 (TX2), optional |
 
-O TX do GPS é 3,3 V, pode ir direto no ESP32. Se a tela for Heltec (reset no
-GPIO16), o firmware troca o GPS para GPIO17 (RX) e GPIO13 (TX) e avisa na
-tela e na serial.
+The GPS TX line is 3.3 V and can go straight to the ESP32. If the screen is a
+Heltec (reset on GPIO16), the firmware moves the GPS to GPIO17 (RX) and GPIO13
+(TX) and reports it on the screen and on the serial port.
 
 ## Firmware (`firmware/wifinder`)
 
@@ -45,91 +49,96 @@ firmware/flash.sh /dev/ttyUSB0
 arduino-cli monitor -p /dev/ttyUSB0 -c baudrate=115200
 ```
 
-A tela mostra: arquivo atual, estado do GPS (sem dados / sem fix / satélites e
-HDOP), hora UTC e altitude, redes ouvidas na última volta, amostras gravadas e
-flash livre. Quando o PC manda comandos ela passa para "PC conectado", com
-barra de progresso durante a transferência e um check no fim.
+The screen shows: current file, GPS state (no data / no fix / satellites and
+HDOP), UTC time and altitude, networks heard in the last sweep, samples
+recorded and free flash. When the PC sends commands it switches to "PC
+conectado" (PC connected), with a progress bar during the transfer and a check
+mark at the end.
 
-Botões: **EN** reinicia a placa e começa uma missão nova (arquivo novo; os
-anteriores ficam guardados até serem baixados). **BOOT** segurado por 3 s
-apaga todos os logs, com contagem na tela (solte antes para cancelar). Na serial sai uma linha de status (`#...`) a cada 2 s, e aceita
-os comandos `help`, `ls`, `dump <arq>`, `rm <arq>`, `rmall`, `pause`, `resume`,
-`info`.
+Buttons: **EN** restarts the board and starts a new mission (a new file;
+earlier ones are kept until downloaded). Holding **BOOT** for 3 s erases all
+logs, with a countdown on screen (release early to cancel). The serial port
+prints a status line (`#...`) every 2 s and accepts the commands `help`, `ls`,
+`dump <file>`, `rm <file>`, `rmall`, `pause`, `resume`, `info`.
 
-Como funciona: varre um canal por vez (120 ms, canais 1 a 13) e grava cada
-rede ouvida com o instante da varredura; o GPS grava um fix por segundo. Tudo
-vai para a flash (LittleFS, ~1,9 MB, dá para várias horas de voo). A posição
-de cada amostra é interpolada no computador entre os fixes vizinhos.
+How it works: it scans one channel at a time (120 ms each, channels 1 to 13)
+and records every network heard with the time of the scan; the GPS records one
+fix per second. Everything goes to flash (LittleFS, ~1.9 MB, enough for several
+hours of flight). The position of each sample is interpolated on the computer
+between the neighbouring fixes.
 
-Diagnóstico do GPS na tela: `GPS SEM DADOS` = nada chega no GPIO16 (fiação);
-`GPS lixo na serial` = chegam bytes mas nenhuma sentença válida (baud);
-`GPS SEM FIX n sat` = módulo ok, esperando satélites (a céu aberto leva de 1 a
-15 min no primeiro uso).
+GPS diagnostics on the screen: `GPS SEM DADOS` (no data) = nothing arrives on
+GPIO16 (wiring); `GPS lixo na serial` (garbage on serial) = bytes arrive but no
+valid sentence (baud rate); `GPS SEM FIX n sat` (no fix) = module OK, waiting
+for satellites (under open sky this takes 1 to 15 min the first time).
 
-## No computador
+## On the computer
 
 ```sh
 pip install -r requirements.txt
-python3 -m wifinder                        # tela inicial no navegador
+python3 -m wifinder                        # start screen in the browser
 ```
 
-A tela inicial mostra quando o ESP32 está na USB, baixa os voos com um clique
-e guarda cada um na pasta `voos/` (um `.log` por voo). Cada voo abre no mapa
-ou vira relatório PDF; marcando vários, eles abrem juntos num mapa só. Ela só
-atende o próprio computador; Ctrl+C no terminal fecha. `--dir` muda a pasta
-dos voos e `--port` a porta.
+The start screen shows when the ESP32 is on USB, downloads its flights with
+one click and stores each one in the `voos/` folder (one `.log` per flight).
+Each flight opens on the map or becomes a PDF report; select several and they
+open together on a single map. It only serves the local computer; Ctrl+C in
+the terminal closes it. `--dir` changes the flights folder and `--port` the
+port.
 
-Executável para Linux: `./empacotar.sh` gera o arquivo `WiFinder` (um só,
-~46 MB, não precisa de Python em quem for usar); `./empacotar.sh --atalho`
-também põe o WiFinder no menu de aplicativos. Ele guarda os voos na pasta
-`voos/` ao lado do executável. Abrir duas vezes só mostra a tela que já está
-aberta; o botão "Encerrar o WiFinder" no rodapé fecha o programa.
+Linux executable: `./empacotar.sh` builds the `WiFinder` file (a single file,
+~46 MB, no Python needed on the user's machine); `./empacotar.sh --atalho` also
+adds WiFinder to the applications menu. It stores flights in a `voos/` folder
+next to the executable. Launching it twice just shows the window already open;
+the "Encerrar o WiFinder" (quit) button in the footer closes the program.
 
-Os mesmos passos pela linha de comando:
+The same steps from the command line:
 
 ```sh
-python3 -m wifinder pull voo.db            # baixa os logs pela USB e importa
-python3 -m wifinder estimate voo.db        # gera voo-roteadores.csv e voo-mapa.html
-python3 -m wifinder report voo.db          # gera voo-relatorio.pdf (resumo, panorama, tabela)
+python3 -m wifinder pull voo.db            # download logs over USB and import them
+python3 -m wifinder estimate voo.db        # writes voo-roteadores.csv and voo-mapa.html
+python3 -m wifinder report voo.db          # writes voo-relatorio.pdf (summary, overview, table)
 ```
 
-`pull` guarda os logs em `voo-logs/` e não importa duas vezes o mesmo arquivo;
-`--rm` apaga da placa depois de baixar. `import` importa logs já baixados
-(para ver um voo só: `python3 -m wifinder import voo20.db voo-logs/v020.log`).
+`pull` keeps the logs in `voo-logs/` and never imports the same file twice;
+`--rm` erases them from the board after downloading. `import` imports logs
+already downloaded (to view a single flight:
+`python3 -m wifinder import voo20.db voo-logs/v020.log`).
 
-Como a posição é estimada: para cada aparelho, a média dos pontos do percurso
-onde o sinal chegou mais forte. As redes que o mesmo roteador anuncia
-(principal, visitantes, operadora) são juntadas num item só. Cada aparelho sai
-com um raio provável (± m) e uma confiança: boa (ouvido forte e em muitos
-pontos), média ou fraca (ouvido em 1 ou 2 pontos). Um percurso em linha reta
-não distingue o lado; passe dos dois lados ou em zigue-zague para afinar.
+How the position is estimated: for each device, the mean of the track points
+where its signal was strongest. Networks broadcast by the same router (main,
+guest, ISP) are merged into a single item. Each device gets a likely radius
+(± m) and a confidence: good (heard strongly and at many points), medium, or
+weak (heard at 1 or 2 points). A straight-line track cannot tell which side a
+device is on; fly past both sides or in a zigzag to refine it.
 
-O mapa HTML tem vista 2D e 3D (botão no painel; botão direito do mouse inclina
-e gira), zoom até o nível 22, busca, filtros por confiança e sinal, lista dos
-aparelhos, os pontos onde o aparelho selecionado foi ouvido, coordenadas em
-decimal, graus/minutos/segundos ou MGRS (cursor, clique no mapa e em cada
-aparelho, com botão de copiar) e exportação dos visíveis em CSV e KML (Google
-Earth). Precisa de internet para o fundo e para as bibliotecas.
+The HTML map has 2D and 3D views (button on the panel; right mouse button tilts
+and rotates), zoom up to level 22, search, filters by confidence and signal, a
+device list, the points where the selected device was heard, coordinates in
+decimal, degrees/minutes/seconds or MGRS (cursor, map click and each device,
+with a copy button) and export of visible devices to CSV and KML (Google
+Earth). It needs internet for the base map and the libraries.
 
-`report` gera resumo com mapa, uma página de panorama (canais, sinal, os mais
-fortes) e a tabela completa. Precisa de internet para o fundo de satélite
-(Esri); sem ela, sai o mapa em metros com `--sem-fundo`. `simulate` gera um voo
-sintético para testar sem hardware (`--ambiente selva` modela a perda pela
-vegetação, `--esp32-log` grava no formato do firmware), e `collect` é a versão
-antiga para Raspberry Pi.
+`report` produces a summary with a map, an overview page (channels, signal,
+strongest devices) and the full table. It needs internet for the satellite
+background (Esri); without it, `--sem-fundo` draws the map in metres.
+`simulate` creates a synthetic flight to test without hardware
+(`--ambiente selva` models loss through forest vegetation, `--esp32-log` writes
+it in the firmware's log format), and `collect` is the older Raspberry Pi
+version.
 
-Testes: `python3 -m pytest tests`.
+Tests: `python3 -m pytest tests`.
 
-Para experimentar sem hardware:
+To try it without hardware:
 
 ```sh
-python3 -m wifinder simulate demo.db       # voo sintético
-python3 -m wifinder estimate demo.db       # demo-roteadores.csv e demo-mapa.html
+python3 -m wifinder simulate demo.db       # synthetic flight
+python3 -m wifinder estimate demo.db       # demo-roteadores.csv and demo-mapa.html
 ```
 
-## Suporte para o drone
+## Drone mount
 
-`suporte/` tem uma caixa fechada (base + tampa) que leva o ESP32 e o GPS em
-cima de um DJI Mavic 4 Pro: modelo paramétrico do FreeCAD (`suporte.py`),
-STL, STEP e G-code pronto para Ender-3 V2. Medidas, montagem, vedação e
-impressão estão em `suporte/LEIA-ME.md`.
+`suporte/` holds a closed enclosure (base + lid) that carries the ESP32 and the
+GPS on top of a DJI Mavic 4 Pro: a parametric FreeCAD model (`suporte.py`),
+STL, STEP and ready-to-print G-code for an Ender-3 V2. Dimensions, assembly,
+sealing and printing are in `suporte/README.md`.

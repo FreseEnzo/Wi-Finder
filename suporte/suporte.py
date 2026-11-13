@@ -30,7 +30,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 EXEMPLO = os.path.expanduser("~/Downloads/mavic-4-pro-air-tag-mount_1-color.stl")
 
 # ------------------------------------------------------------- medidas
-# CONFIRA ESTAS antes de imprimir (ver LEIA-ME.md).
+# CONFIRA ESTAS antes de imprimir (ver README.md).
 ESP_COMP = 70.0      # placa ESP32: comprimento (medido pelo usuário, aproximado)
 ESP_LARG = 30.0      # placa ESP32: largura (medido pelo usuário, aproximado)
 ESP_PINOS = 8.5      # da ponta dos pinos até a face de baixo da placa
