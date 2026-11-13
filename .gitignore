@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Empacotamento (./empacotar.sh)
+build/
+/WiFinder
+
+# Dados de voo e saídas geradas (posições reais e redes de terceiros)
+*.db
+*.log
+*-logs/
+voos/
+*-mapa.html
+*-relatorio.pdf
+*-roteadores.csv
+
+# Outros
+.playwright-mcp/
+lista-de-compras.*
