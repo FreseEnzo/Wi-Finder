@@ -127,6 +127,15 @@ class App:
                          cache=Path.home() / ".cache" / "wifinder-tiles")
             return out.read_bytes()
 
+    def report_md(self, ids):
+        from . import report
+
+        routers, track, summary = self.lib.load(ids)
+        if not routers:
+            raise ValueError("Este voo não tem redes com posição de GPS.")
+        source = ", ".join(self.lib.title(i) for i in ids[:6]) + (" ..." if len(ids) > 6 else "")
+        return report.markdown(routers, track, summary["amostras"], title=self._title(ids), source=source)
+
 
 def _explain(e):
     text = str(e)
@@ -180,11 +189,17 @@ class Handler(BaseHTTPRequestHandler):
                 self._send(200, self.app.state())
             elif url.path == "/mapa":
                 self._send(200, self.app.map_html(self._ids(query)), "text/html; charset=utf-8")
-            elif url.path == "/relatorio.pdf":
+            elif url.path in ("/relatorio.pdf", "/relatorio.md"):
                 ids = self._ids(query)
-                name = (ids[0] if len(ids) == 1 else f"{len(ids)}-voos") + "-relatorio.pdf"
-                self._send(200, self.app.report_pdf(ids), "application/pdf",
-                           [("Content-Disposition", f'inline; filename="{name}"')])
+                ext = url.path.rsplit(".", 1)[1]
+                name = (ids[0] if len(ids) == 1 else f"{len(ids)}-voos") + "-relatorio." + ext
+                # ?baixar=1 salva o arquivo; sem ele o PDF abre no navegador.
+                how = "attachment" if query.get("baixar") == ["1"] else "inline"
+                if ext == "pdf":
+                    body, ctype = self.app.report_pdf(ids), "application/pdf"
+                else:
+                    body, ctype = self.app.report_md(ids), "text/markdown; charset=utf-8"
+                self._send(200, body, ctype, [("Content-Disposition", f'{how}; filename="{name}"')])
             else:
                 self._send(404, "Não encontrado.", "text/plain; charset=utf-8")
         except KeyError:
@@ -363,7 +378,8 @@ PAGE = r"""<!doctype html>
     <h2 id="count">Voos</h2>
     <span class="sel" id="selText"></span>
     <button id="openSel" class="primary" style="display:none">Mapa dos selecionados</button>
-    <button id="pdfSel" style="display:none">Relatório dos selecionados</button>
+    <button id="pdfSel" style="display:none" title="Relatório dos selecionados em PDF">Baixar PDF</button>
+    <button id="mdSel" style="display:none" title="Relatório dos selecionados em Markdown">Baixar Markdown</button>
     <button id="importBtn">Importar arquivos .log</button>
     <input type="file" id="file" accept=".log,.txt" multiple hidden>
   </div>
@@ -433,7 +449,9 @@ function renderFlights(flights) {
     const acts = el("div", {className: "acts"});
     if (mapped) {
       acts.append(el("a", {className: "btn primary", href: "/mapa?ids=" + encodeURIComponent(f.id), textContent: "Abrir mapa"}));
-      acts.append(el("a", {className: "btn", href: "/relatorio.pdf?ids=" + encodeURIComponent(f.id), target: "_blank", title: "Relatório em PDF", textContent: "PDF"}));
+      acts.append(el("a", {className: "btn", href: "/relatorio.pdf?ids=" + encodeURIComponent(f.id), target: "_blank", title: "Abrir o relatório em PDF no navegador", textContent: "PDF"}));
+      acts.append(el("a", {className: "btn", href: "/relatorio.pdf?baixar=1&ids=" + encodeURIComponent(f.id), title: "Baixar o relatório em PDF", textContent: "↓ PDF"}));
+      acts.append(el("a", {className: "btn", href: "/relatorio.md?baixar=1&ids=" + encodeURIComponent(f.id), title: "Baixar o relatório em Markdown (texto, sem o mapa)", textContent: "↓ Markdown"}));
     }
     acts.append(el("span", {className: "sp"}));
     const ren = el("button", {className: "quiet", textContent: "Renomear"});
@@ -456,10 +474,12 @@ function renderFlights(flights) {
 function renderSel() {
   const n = picked.size;
   $("selText").textContent = n ? `${n} selecionado${n > 1 ? "s" : ""}` : "";
-  $("openSel").style.display = $("pdfSel").style.display = n > 1 ? "" : "none";
+  $("openSel").style.display = $("pdfSel").style.display = $("mdSel").style.display = n > 1 ? "" : "none";
 }
 $("openSel").onclick = () => { location.href = "/mapa?ids=" + [...picked].map(encodeURIComponent).join(","); };
-$("pdfSel").onclick = () => { window.open("/relatorio.pdf?ids=" + [...picked].map(encodeURIComponent).join(","), "_blank"); };
+const selIds = () => [...picked].map(encodeURIComponent).join(",");
+$("pdfSel").onclick = () => { location.href = "/relatorio.pdf?baixar=1&ids=" + selIds(); };
+$("mdSel").onclick = () => { location.href = "/relatorio.md?baixar=1&ids=" + selIds(); };
 
 const STATUS = {novo: "novo", atualizado: "atualizado", igual: "já estava guardado", vazio: "vazio, ignorado"};
 function renderDevice(s) {

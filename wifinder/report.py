@@ -426,3 +426,77 @@ def write(path, routers, track, samples=0, title="Relatório do voo", source="",
             pdf.savefig(fig)
             plt.close(fig)
     return pages
+
+
+# --------------------------------------------------------------- Markdown
+
+def _md(s):
+    """Nome de rede é texto arbitrário: escapa o que quebraria a tabela ou viraria formatação."""
+    s = " ".join(str(s).split())
+    for ch in "\\|*_`[]<>#":
+        s = s.replace(ch, "\\" + ch)
+    return s
+
+
+def markdown(routers, track, samples=0, title="Relatório do voo", source=""):
+    """O mesmo relatório do PDF em Markdown (sem o mapa): resumo, panorama e tabela."""
+    summary = flight_summary(track, samples, routers)
+    has_truth = any(r.get("error") is not None for r in routers)
+    n_nets = sum(len(r["nets"]) for r in routers)
+    out = [f"# {_md(title)}", ""]
+    sub = [_md(source)] if source else []
+    if "inicio" in summary:
+        sub.append("início " + _fmt_time(summary["inicio"]))
+    sub.append("gerado em " + time.strftime("%d/%m/%Y %H:%M"))
+    out += [" · ".join(sub), "", "## Resumo", "", "| | |", "|---|---:|",
+            f"| Aparelhos | {len(routers)} |", f"| Redes WiFi | {n_nets} |"]
+    if "duracao" in summary:
+        out.append(f"| Duração | {_fmt_dur(summary['duracao'])} |")
+    if "distancia" in summary:
+        out.append(f"| Percurso | {_fmt_dist(summary['distancia'])} |")
+    out.append(f"| Amostras | {summary['amostras']} |")
+    if routers:
+        out.append(f"| Sinal mais forte | {max(r['rssi_max'] for r in routers):.0f} dBm |")
+    if "alt_min" in summary:
+        out.append(f"| Altitude (GPS) | {summary['alt_min']:.0f} a {summary['alt_max']:.0f} m |")
+
+    n_by = {s: sum(r["status"] == s for r in routers) for s in ("boa", "média", "fraca")}
+    chans = sorted({r["channel"] for r in routers})
+    out += ["", "## Panorama", "",
+            f"Confiança da posição: **{n_by['boa']}** boa, **{n_by['média']}** média, **{n_by['fraca']}** fraca.", "",
+            "| Canal | " + " | ".join(str(c) for c in chans) + " |",
+            "|---|" + "---:|" * len(chans),
+            "| Aparelhos | " + " | ".join(str(sum(r["channel"] == c for r in routers)) for c in chans) + " |",
+            "", "## Como ler este relatório", "",
+            "- **Aparelho**: um roteador. As redes que ele anuncia (principal, visitantes, operadora) "
+            "foram juntadas num item só.",
+            "- **Posição**: média dos pontos do percurso onde o sinal chegou mais forte. É onde o aparelho foi "
+            "ouvido melhor, não um endereço exato: ele costuma estar dentro do raio provável (± m) em volta do ponto.",
+            "- **Confiança** boa: ouvido forte e em muitos pontos. Média: ouvido em alguns pontos. "
+            "Fraca: ouvido em 1 ou 2 pontos; a posição mostra só onde o percurso passou perto.",
+            "- Percurso em linha reta não distingue o lado: para afinar a posição, passe dos dois lados ou em zigue-zague.",
+            "", "## Aparelhos encontrados", "",
+            "Do sinal mais forte ao mais fraco. Coordenadas em graus decimais (WGS84); "
+            "± m é o raio provável; sinal em dBm.", ""]
+    head = ["#", "Nome", "Redes", "Endereço (BSSID)", "Canal", "Latitude", "Longitude", "± m", "Sinal", "Confiança"]
+    align = ["---:", "---", "---:", "---", "---:", "---:", "---:", "---:", "---:", "---"]
+    if has_truth:
+        head.append("Erro real")
+        align.append("---:")
+    out += ["| " + " | ".join(head) + " |", "|" + "|".join(align) + "|"]
+    for i, r in enumerate(routers):
+        cells = [str(i + 1), _md(_name(r)), str(len(r["nets"])), f"`{r['bssid']}`", str(r["channel"]),
+                 f"{r['lat']:.6f}", f"{r['lon']:.6f}", f"{r['radius']:.0f}", f"{r['rssi_max']:.0f}", r["status"]]
+        if has_truth:
+            cells.append(f"{r['error']:.0f} m" if r.get("error") is not None else "")
+        out.append("| " + " | ".join(cells) + " |")
+
+    multi = [(i, r) for i, r in enumerate(routers) if len(r["nets"]) > 1]
+    if multi:
+        out += ["", "## Redes de cada aparelho", "",
+                "Aparelhos que anunciam mais de uma rede (o número é o da tabela).", ""]
+        for i, r in multi:
+            out.append(f"- **{i + 1}. {_md(_name(r))}**: " + "; ".join(
+                f"{_md(n['ssid'] or '(rede oculta)')} `{n['bssid']}` ({n['rssi_max']:.0f} dBm)" for n in r["nets"]))
+    out += ["", "---", "", f"WiFinder · {_md(source)}" if source else "WiFinder", ""]
+    return "\n".join(out)

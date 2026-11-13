@@ -190,6 +190,11 @@ def test_report(tmp_path):
     out = tmp_path / "r.pdf"
     pages = report.write(out, routers, track, samples=100, basemap=False)  # sem internet
     assert pages == 3 and out.read_bytes()[:5] == b"%PDF-"
+    routers[0]["ssid"] = "a|b *c*"  # nome de rede arbitrário não pode quebrar a tabela
+    md = report.markdown(routers, track, samples=100, title="Teste", source="sim.db")
+    assert md.startswith("# Teste") and "a\\|b \\*c\\*" in md and "Erro real" in md
+    rows = [l for l in md.splitlines() if l.startswith("| ") and l[2:3].isdigit()]
+    assert len(rows) == len(routers) and all(l.count(" | ") == rows[0].count(" | ") for l in rows)
     x, y = report._merc(0, 0, 1)
     assert (x, y) == (256, 256)
 
@@ -326,6 +331,12 @@ def test_app_http(tmp_path, monkeypatch):
         assert fake.done == 2 and len(fake.files) == 2  # nada apagado da placa
         (flight,) = state["flights"]
         assert flight["devices"] == 3
+        md = call("/relatorio.md?baixar=1&ids=" + flight["id"]).decode()
+        assert md.startswith("# ") and "## Aparelhos encontrados" in md and md.count("\n| ") >= 3
+        req = urllib.request.Request(base + "/relatorio.md?baixar=1&ids=" + flight["id"])
+        with urllib.request.urlopen(req, timeout=20) as r:
+            assert r.headers["Content-Disposition"].startswith("attachment;")
+            assert r.headers["Content-Type"].startswith("text/markdown")
         page = call("/mapa?ids=" + flight["id"]).decode()
         assert "maplibre" in page and '"home": "/"' in page
         try:
